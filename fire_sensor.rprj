@@ -1,0 +1,4 @@
+
+<Project Header="Project 'fire_sensor'" Path=".\fire_sensor.rprj" Project="Yes" AsyncBuild="" OutputFile="" sate="96" ActiveApp="fire_sensor" >
+	<ApplicationBuild Header="fire_sensor" Extern=".\fire_sensor.rapp" Path=".\fire_sensor.rapp" AsyncBuild="" OutputFile=".\bin\fire_sensor.aof" sate="96" />
+</Project>
