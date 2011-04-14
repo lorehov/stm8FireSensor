@@ -1,76 +1,107 @@
 /*
-* possible ADC channels (AINs): GPIOB(0-3), 
-* we using PB0 as AIN for ADC
-* PC1 - check pulse
-* PC2 - channel error flag
-* PC3 - fire flag
 * see main.h for prototypes, enums and constants
 */
 #include "main.h"
+
+/*
+* number of checks, when check_count >= 3,
+* channel error will be triggered
+*/
+int check_count = 0;
 
 int main()
 {
     u8 conversions_buffer[2];
     u8 delay_type = LONG_DELAY_1S;
+    u8 J = 0; //counter for fire check measurements
+    u8 i = 0; //empty tries (when tresh on line) counter
+    u8 k = 0; //empty cycles counter
     
     Periph_Init();
     while(1) {
-        u8 value = makeConversion();
-        if (TRESHHOLD_LEVEL >= value) {
-            GPIO_WriteHigh(GPIOC, GPIO_PIN_1);
-            delay15mcs();
-            conversions_buffer[0] = makeConversion();
-            delay500mcs();
-            conversions_buffer[1] = makeConversion();
-            if (FIRE_LEVEL == conversions_buffer[0] 
-                && FIRE_LEVEL == conversions_buffer[0]) {
-                GPIO_WriteHigh(GPIOC, GPIO_PIN_3); //achtung! fire!
+        initializeAdc(TRESHHOLD_CHANNEL);
+        if (TRESHHOLD_LEVEL >= makeConversion()) {
+            //no treshhold here
+            //make conversion
+            initializeAdc(FIRE_CHECK_CHANNEL);
+            pulse();
+            if (0 == J) {
+                conversions_buffer[0] == makeConversion();
+                J++;
+            } else if (1 == J) {
+                conversions_buffer[1] == makeConversion();
+                J++;
             }
-            GPIO_WriteLow(GPIOC, GPIO_PIN_1);
-            channelErrorClear();
-            delay_type = LONG_DELAY_1S;
+            
+            //if both conversions are made - check these
+            if (2 == J) {
+                if (FIRE_LEVEL < conversions_buffer[0] 
+                    && FIRE_LEVEL < conversions_buffer[1]) {
+                    //if fire - activate LED and break the cycle
+                    GPIO_WriteHigh(GPIOA, GPIO_PIN_2);
+                    break;
+                } else {
+                    blink();
+                    conversion_buffer[0] = 0;
+                    conversion_buffer[1] = 0;
+                    J = 0;
+                    i = 0;
+                    k = 0;
+                    delay1s();
+                }
+            }
         } else {
-            //We don't want to organize two similar cycles one inside
-            //another, so, we just change a delay value.
-            if (LONG_DELAY_1S == delay_type) {
-                delay_type = SHORT_DELAY_500MCS;
-            } else {
-                delay_type = LONG_DELAY_1S;
-                channelError();
+            //tresh on line
+            i++;
+            if (100 == i) {
+                i = 0;
+                J = 0;
+                k++;
+                if (3 > k) {
+                    pulse();
+                }
+                delay1s();
+                if (255 == k) {
+                    k = 0;
+                }
             }
         }
-        delayByType(delay_type);
     }
     return 0;
 }
 
 void Periph_Init()
 {
-	CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
-	GPIO_DeInit(GPIOB);
-   	GPIO_DeInit(GPIOC);
+    CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
+    GPIO_DeInit(GPIOA);
+    GPIO_DeInit(GPIOD);
+    GPIO_DeInit(GPIOC);
     
-    GPIO_Init(GPIOB, GPIO_PIN_0, GPIO_MODE_IN_FL_NO_IT); //adc
-	GPIO_Init(GPIOC, GPIO_PIN_1, GPIO_MODE_OUT_OD_LOW_FAST); //check pulse
-    GPIO_Init(GPIOC, GPIO_PIN_2, GPIO_MODE_OUT_OD_LOW_FAST); //channel error flag
-	GPIO_Init(GPIOC, GPIO_PIN_3, GPIO_MODE_OUT_OD_LOW_FAST); //fire flag
+    GPIO_Init(GPIOD, GPIO_PIN_5, GPIO_MODE_IN_FL_NO_IT); //adc fire
+    GPIO_Init(GPIOD, GPIO_PIN_6, GPIO_MODE_IN_FL_NO_IT); //adc treshhold
+    GPIO_Init(GPIOA, GPIO_PIN_2, GPIO_MODE_OUT_OD_LOW_FAST); //led
+    GPIO_Init(GPIOC, GPIO_PIN_7, GPIO_MODE_OUT_PP_LOW_FAST); //pulse
 
-    GPIO_WriteLow(GPIOC, GPIO_PIN_1);
-    GPIO_WriteLow(GPIOC, GPIO_PIN_2);
-    GPIO_WriteLow(GPIOC, GPIO_PIN_3);
+    GPIO_WriteLow(GPIOA, GPIO_PIN_2);
+    GPIO_WriteLow(GPIOC, GPIO_PIN_7);
+}
+
+void initializeAdc(ADC_Source channel)
+{
+    //as we need to take ADC from different channels,
+    //we place initialization here
+    ADC1_DeInit();
+    ADC1_Init(ADC1_CONVERSIONMODE_SINGLE, channel,
+              ADC1_PRESSEL_FCPU_D2, ADC1_EXTTRIG_GPIO, DISABLE,
+              ADC1_ALIGN_LEFT, ADC1_SCHMITTTRIG_CHANNEL1,
+              DISABLE);
+    ADC1_Cmd(ENABLE);
 }
 
 u8 makeConversion()
 {
     u8 value;
-   	ADC1_DeInit();
-	ADC1_Init(ADC1_CONVERSIONMODE_SINGLE, ADC1_CHANNEL_1,
-						ADC1_PRESSEL_FCPU_D8, ADC1_EXTTRIG_GPIO, DISABLE,
-						ADC1_ALIGN_LEFT, ADC1_SCHMITTTRIG_CHANNEL1,
-						DISABLE);
-	ADC1_Cmd(ENABLE);
     ADC1_StartConversion();
-
     while(RESET == ADC1_GetFlagStatus(ADC1_IT_EOC)) {
     }
     
@@ -78,26 +109,24 @@ u8 makeConversion()
     return value;
 }
 
-void channelError()
+void blink()
 {
-    if (check_count <3) {
-        check_count++;
-    }
-    
-    if (check_count == 3) {
-        GPIO_WriteHigh(GPIOC, GPIO_PIN_2);
-    }
+    GPIO_WriteHigh(GPIOA, GPIO_PIN_2);
+    GPIO_WriteLow(GPIOA, GPIO_PIN_2);
+
 }
 
-void channelErrorClear()
+void pulse()
 {
-    check_count = 0;
-    GPIO_WriteLow(GPIOC, GPIO_PIN_2);
+    GPIO_WriteHigh(GPIOC, GPIO_PIN_7);
+    delay10mcs();
+    GPIO_WriteLow(GPIOC, GPIO_PIN_7);
+    delay50mcs();
 }
 
 void delay1s()
 {
-	int i;
+    int i;
     u8 j;
     for (j=0; j<100; j++) {
         for (i=0; i<30119; i++){
@@ -105,25 +134,26 @@ void delay1s()
     }
 }
 
-void delay15mcs()
+void delay100ms()
 {
-   	u8 i;
-	for (i=0; i<45; i++){
-	}
+    int i;
+    u8 j;
+    for (j=0; j<10; j++) {
+        for (i=0; i<30119; i++){
+        }
+    }
 }
 
-void delay500mcs()
+void delay50mcs()
 {
-   	u16 i;
-	for (i=0; i<1500; i++){
-	}
+    u8 i;
+    for (i=0; i<150; i++){
+    }
 }
 
-void delayByType(u8 delay_type)
+void delay10mcs()
 {
-    switch(delay_type) {
-        case LONG_DELAY_1S: delay1s(); break;
-        case SHORT_DELAY_500MCS: delay500mcs(); break;
-        default: delay1s(); break;
+    u8 i;
+    for (i=0; i<30; i++){
     }
 }
