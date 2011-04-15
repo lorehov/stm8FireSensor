@@ -8,7 +8,7 @@ typedef enum {
 
 typedef enum {
     SHORT_DELAY_500MCS = 0,
-    LONG_DELAY_1S      = 1,
+    LONG_DELAY_1S      = 1
 } Delay_Type;
 
 typedef enum {
