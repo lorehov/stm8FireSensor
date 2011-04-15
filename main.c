@@ -26,10 +26,10 @@ int main()
             initializeAdc(FIRE_CHECK_CHANNEL);
             pulse();
             if (0 == J) {
-                conversions_buffer[0] == makeConversion();
+                conversions_buffer[0] = makeConversion();
                 J++;
             } else if (1 == J) {
-                conversions_buffer[1] == makeConversion();
+                conversions_buffer[1] = makeConversion();
                 J++;
             }
             
