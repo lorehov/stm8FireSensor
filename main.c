@@ -12,7 +12,6 @@ int check_count = 0;
 int main()
 {
     u8 conversions_buffer[2];
-    u8 delay_type = LONG_DELAY_1S;
     u8 J = 0; //counter for fire check measurements
     u8 i = 0; //empty tries (when tresh on line) counter
     u8 k = 0; //empty cycles counter

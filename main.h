@@ -7,11 +7,6 @@ typedef enum {
 } Signal_Levels;
 
 typedef enum {
-    SHORT_DELAY_500MCS = 0,
-    LONG_DELAY_1S      = 1
-} Delay_Type;
-
-typedef enum {
     TRESHHOLD_CHANNEL  = ADC1_CHANNEL_6,
     FIRE_CHECK_CHANNEL = ADC1_CHANNEL_5
 } ADC_Source;
