@@ -41,8 +41,8 @@ int main()
                     break;
                 } else {
                     blink();
-                    conversion_buffer[0] = 0;
-                    conversion_buffer[1] = 0;
+                    conversions_buffer[0] = 0;
+                    conversions_buffer[1] = 0;
                     J = 0;
                     i = 0;
                     k = 0;
